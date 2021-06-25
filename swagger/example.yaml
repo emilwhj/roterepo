@@ -1,0 +1,265 @@
+openapi: 3.0.0
+info:
+  title: 'REST Resources Provided By: Bitbucket Server - REST'
+  version: '1.0'
+externalDocs:
+  description: "Bitbucket SSH API"
+  url: https://docs.atlassian.com/bitbucket-server/rest/7.12.1/bitbucket-ssh-rest.html#idp8
+servers:
+  - url: 'https://bitbucket.brreg.no/rest'
+  
+tags:
+- name: ssh
+
+paths:
+  '/keys/1.0/projects/{projectName}/repos/{repositoryName}/ssh':
+      parameters:
+        - in: path
+          name: projectName
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: repositoryName
+          required: true
+          schema:
+            type: string
+      get:
+        tags:
+        - "ssh"
+        operationId: getRepositorySshKeys # egendefinert navn på funksjon som blir generert av swagger
+        description: Retrieves the access keys for the repository identified in the URL.
+        parameters:
+          - in: query
+            name: filter
+            schema:
+              type: string
+            description: if specified only SSH access keys with a label prefixed with the supplied string will be returned
+          - in: query
+            name: effective
+            schema:
+              type: boolean
+              default: false
+            description: >-
+              Controls whether SSH access keys configured at the project level should be included in the results or not. When set to true all keys that
+              have access to the repository (including project level keys) are included in the results. When set to false, only access keys configured
+              for the specified repository are considered. Default is false.
+          - in: query
+            name: permission
+            schema:
+              type: string
+            description: if specified only SSH access keys with at least the supplied permission will be returned Default is Permission.REPO_READ.
+        responses:
+          '200':
+            description: A single page of access keys for the repository.
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/KeyAndRepositoryList'
+          '401':
+            description: The currently authenticated user has insufficient permissions to retrieve the access keys for this repository
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/response_error'
+          '404':
+            description: The specified repository does not exist
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/response_error'
+      post:
+        tags:
+        - "ssh"
+        operationId: createRepositorySshKey # egendefinert navn på funksjon som blir generert av swagger
+        description: Register a new SSH key and grants access to the repository identified in the URL.
+        requestBody:
+          description: Example request representations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NewRepoKey'
+        responses:
+          '200':
+            description: The newly created access key
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/KeyAndRepository'
+          '400':
+            description: The current request contains invalid or missing values.
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/response_error'
+          '401':
+            description: The currently authenticated user has insufficient permissions to add an access key to the repository
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/response_error'
+          '404':
+            description: The specified repository does not exist
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/response_error'
+
+components:
+  schemas:
+    KeyAndRepositoryList: # egendefinert navn på type? (struct i go, forskjellige navn i forskjellige språk) som blir generert av swagger, 
+      type: object
+      properties:
+        size:
+          type: integer
+          format: int32
+          example: 1
+        limit:
+          type: integer
+          format: int32
+          example: 25
+        isLastPage:
+          type: boolean
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/KeyAndRepository'
+        start:
+          type: integer
+          format: int32
+          example: 0
+    KeyAndRepository:
+      type: object
+      properties:
+        key:
+          type: object
+          properties:
+            id:
+              type: integer
+              format: int32
+              example: 1
+            text:
+              type: string
+              example: ssh-rsa AAAAB3... me@127.0.0.1
+            label:
+              type: string
+              example: me@127.0.0.1
+        repository:
+          type: object
+          properties:
+            slug:
+              type: string
+              example: my-repo
+            id:
+              type: integer
+              format: int32
+              example: 1
+            name:
+              type: string
+              example: My repo
+            description:
+              type: string
+              example: My repo description
+            hierarchyId:
+              type: string
+              example: e3c939f9ef4a7fae272e
+            scmId:
+              type: string
+              example: git
+            state:
+              type: string
+              example: AVAILABLE
+            statusMessage:
+              type: string
+              example: Available
+            forkable:
+              type: boolean
+            project:
+              type: object
+              properties:
+                key:
+                  type: string
+                  example: PRJ
+                id:
+                  type: integer
+                  format: int32
+                  example: 1
+                name:
+                  type: string
+                  example: My Cool Project
+                description:
+                  type: string
+                  example: The description for my cool project.
+                public:
+                  type: boolean
+                type:
+                  type: string
+                  example: NORMAL
+                links:
+                  type: object
+                  properties:
+                    self:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          href:
+                            type: string
+                            example: http://link/to/project
+            public:
+              type: boolean
+            links:
+              type: object
+              properties:
+                clone:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      href:
+                        type: string
+                        example: ssh://git@<baseURL>/PRJ/my-repo.git
+                      name:
+                        type: string
+                        example: ssh
+                self:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      href:
+                        type: string
+                        example: http://link/to/repository
+        permission:
+          type: string
+          example: REPO_WRITE
+    NewRepoKey:
+      type: object
+      properties:
+        key:
+          type: object
+          properties:
+            text:
+              type: string
+              example: ssh-rsa AAAAB3... me@127.0.0.1
+        permission:
+          type: string
+          enum: ["REPO_READ", "REPO_WRITE"]
+          example: REPO_WRITE
+    response_error:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              context:
+                type: string
+                format: nullable
+              message:
+                type: string
+                example: A detailed error message.
+              exceptionName:
+                type: string
+                format: nullable
